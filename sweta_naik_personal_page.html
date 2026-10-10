@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f5f7">
+<meta name="description" content="Personal portfolio of Sweta Naik, Product Owner based in Bengaluru, India.">
+<title>Sweta Naik — Product Owner</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: rgba(255,255,255,.78);
+    --white: #fff;
+    --text: #1d1d1f;
+    --muted: #6e6e73;
+    --blue: #06c;
+    --line: rgba(0,0,0,.09);
+    --shadow: 0 18px 50px rgba(0,0,0,.055);
+    --radius: 28px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: -.018em; -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .nav-wrap { position: sticky; top: 0; z-index: 10; background: rgba(245,245,247,.78); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(0,0,0,.06); }
+  nav { max-width: 1080px; height: 54px; margin: auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+  .brand { font-size: 15px; font-weight: 650; letter-spacing: -.03em; color: var(--text); white-space: nowrap; }
+  .nav-links { display: flex; gap: 25px; align-items: center; font-size: 12px; color: #424245; }
+  .nav-links a { color: inherit; }
+  .nav-links a:hover { color: var(--blue); text-decoration: none; }
+  .hero { max-width: 1080px; margin: auto; padding: 105px 24px 82px; text-align: center; }
+  .eyebrow { color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: .02em; }
+  h1 { margin: 18px 0 14px; font-size: clamp(48px, 8vw, 88px); line-height: .98; letter-spacing: -.075em; font-weight: 700; }
+  .hero h2 { margin: 0 auto; max-width: 750px; font-size: clamp(22px, 3.5vw, 36px); line-height: 1.18; letter-spacing: -.045em; font-weight: 600; }
+  .hero p { max-width: 650px; margin: 22px auto 0; color: var(--muted); font-size: 18px; line-height: 1.55; letter-spacing: -.02em; }
+  .actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 19px; border-radius: 999px; font-size: 14px; font-weight: 550; transition: transform .2s, background .2s; }
+  .button:hover { transform: translateY(-1px); text-decoration: none; }
+  .primary { background: var(--blue); color: white; }
+  .primary:hover { background: #0077ed; }
+  .secondary { border: 1px solid #d2d2d7; color: var(--blue); background: rgba(255,255,255,.5); }
+  .section { max-width: 1080px; padding: 0 24px; margin: 0 auto 24px; scroll-margin-top: 80px; }
+  .section-heading { padding: 44px 0 22px; }
+  .section-heading .eyebrow { margin-bottom: 9px; }
+  h2.section-title { font-size: clamp(32px, 4vw, 48px); line-height: 1.05; letter-spacing: -.06em; margin: 0; font-weight: 650; }
+  .intro { color: var(--muted); font-size: 17px; line-height: 1.55; max-width: 650px; margin: 13px 0 0; }
+  .feature-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 20px; }
+  .panel { border-radius: var(--radius); background: var(--white); box-shadow: var(--shadow); padding: 30px; }
+  .dark-panel { background: #1d1d1f; color: white; min-height: 300px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; }
+  .dark-panel:after { content: ""; position: absolute; width: 300px; height: 300px; right: -90px; bottom: -130px; border-radius: 50%; background: radial-gradient(circle, rgba(41,151,255,.8), rgba(94,92,230,.2) 50%, transparent 70%); filter: blur(6px); }
+  .panel-kicker { color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-size: 11px; font-weight: 700; }
+  .dark-panel .panel-kicker { color: #a1a1a6; }
+  .panel h3 { margin: 16px 0 12px; font-size: 28px; letter-spacing: -.045em; line-height: 1.12; }
+  .panel p { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0; }
+  .dark-panel h3 { font-size: clamp(30px, 4vw, 43px); max-width: 430px; position: relative; z-index: 1; }
+  .dark-panel p { color: #d2d2d7; max-width: 440px; position: relative; z-index: 1; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; position: relative; z-index: 1; }
+  .pill { border: 1px solid var(--line); background: #f5f5f7; color: #424245; padding: 8px 12px; border-radius: 999px; font-size: 12px; }
+  .dark-panel .pill { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.14); color: #f5f5f7; }
+  .skills-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  .skill-card { background: white; border-radius: 22px; padding: 24px; min-height: 170px; box-shadow: var(--shadow); }
+  .skill-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: #f5f5f7; font-size: 19px; margin-bottom: 22px; }
+  .skill-card h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.035em; }
+  .skill-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .timeline { display: grid; gap: 14px; }
+  .job { display: grid; grid-template-columns: 190px 1fr; gap: 26px; background: white; padding: 26px 28px; border-radius: 22px; box-shadow: var(--shadow); }
+  .job-date { color: var(--muted); font-size: 13px; line-height: 1.55; padding-top: 4px; }
+  .job h3 { margin: 0; font-size: 21px; letter-spacing: -.04em; }
+  .job .role { margin-top: 4px; color: #424245; font-size: 14px; font-weight: 600; }
+  .job p { color: var(--muted); margin: 12px 0 0; font-size: 14px; line-height: 1.65; }
+  .job ul { padding-left: 18px; margin: 12px 0 0; color: #424245; font-size: 14px; line-height: 1.65; }
+  .education-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .education { padding: 22px 24px; border-radius: 20px; background: white; box-shadow: var(--shadow); }
+  .education h3 { margin: 0 0 7px; font-size: 16px; letter-spacing: -.025em; }
+  .education p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .contact { background: #e8e8ed; border-radius: 30px; padding: 45px; text-align: center; }
+  .contact h2 { margin: 0; font-size: clamp(34px, 5vw, 54px); letter-spacing: -.06em; }
+  .contact p { margin: 14px auto 22px; max-width: 500px; color: #6e6e73; line-height: 1.55; font-size: 16px; }
+  footer { max-width: 1080px; padding: 28px 24px 40px; margin: auto; color: #86868b; font-size: 12px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  @media (max-width: 700px) {
+    nav { padding: 0 18px; }
+    .nav-links { gap: 13px; font-size: 11px; }
+    .nav-links a:nth-child(2) { display: none; }
+    .hero { padding: 78px 20px 62px; }
+    .hero p { font-size: 16px; }
+    .section { padding: 0 16px; }
+    .feature-grid, .skills-grid, .education-grid { grid-template-columns: 1fr; }
+    .panel { padding: 25px; }
+    .job { grid-template-columns: 1fr; gap: 8px; padding: 23px; }
+    .job-date { order: 2; }
+    .job-content { order: 1; }
+    .contact { padding: 35px 22px; }
+    footer { padding-left: 18px; padding-right: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *:before, *:after { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="nav-wrap">
+  <nav aria-label="Main navigation">
+    <a class="brand" href="#home">Sweta Naik</a>
+    <div class="nav-links">
+      <a href="#about">About</a>
+      <a href="#expertise">Expertise</a>
+      <a href="#experience">Experience</a>
+      <a href="#education">Education</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </nav>
+</div>
+
+<main id="home">
+  <header class="hero">
+    <div class="eyebrow">PRODUCT OWNER · BENGALURU, INDIA</div>
+    <h1>Sweta Naik.</h1>
+    <h2>Connecting customer needs, technology<br>and thoughtful product experiences.</h2>
+    <p>Product Owner with a background spanning software development, solution design, data validation and enterprise applications.</p>
+    <div class="actions">
+      <a class="button primary" href="#experience">Explore my experience <span aria-hidden="true" style="margin-left:8px">↗</span></a>
+      <a class="button secondary" href="mailto:swetanaikblr@gmail.com">Get in touch</a>
+    </div>
+  </header>
+
+  <section class="section" id="about">
+    <div class="feature-grid">
+      <article class="panel dark-panel">
+        <div>
+          <div class="panel-kicker">A little about me</div>
+          <h3>From building software to shaping products.</h3>
+        </div>
+        <p>My experience brings together hands-on technical foundations and a focus on solving business and customer problems through software.</p>
+      </article>
+      <article class="panel">
+        <div class="panel-kicker">At a glance</div>
+        <h3>Product thinking.<br>Technical roots.</h3>
+        <p>Experience across product ownership, enterprise application solutions, healthcare data validation, web development and integrations.</p>
+        <div class="pill-row">
+          <span class="pill">Product ownership</span>
+          <span class="pill">Solution design</span>
+          <span class="pill">Software development</span>
+          <span class="pill">Data validation</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="expertise">
+    <div class="section-heading">
+      <div class="eyebrow">WHAT I BRING</div>
+      <h2 class="section-title">A blend of product and technology.</h2>
+      <p class="intro">A practical foundation in understanding systems, validating outcomes and translating requirements into workable solutions.</p>
+    </div>
+    <div class="skills-grid">
+      <article class="skill-card">
+        <div class="skill-icon" aria-hidden="true">✳</div>
+        <h3>Product ownership</h3>
+        <p>Bringing customer and business requirements together with delivery teams to shape useful product capabilities.</p>
+      </article>
+      <article class="skill-card">
+        <div class="skill-icon" aria-hidden="true">⌘</div>
+        <h3>Solution development</h3>
+        <p>Experience with enterprise applications, solution design, web services and software implementation.</p>
+      </article>
+      <article class="skill-card">
+        <div class="skill-icon" aria-hidden="true">◉</div>
+        <h3>Data & quality</h3>
+        <p>Data validation, test scripts, validation checks, dashboard delivery and measure reconciliation.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="experience">
+    <div class="section-heading">
+      <div class="eyebrow">CAREER</div>
+      <h2 class="section-title">Experience that builds on itself.</h2>
+      <p class="intro">A career spanning product ownership, enterprise solutions, healthcare analytics and software engineering.</p>
+    </div>
+    <div class="timeline">
+      <article class="job">
+        <div class="job-date">January 2026 – Present<br>India</div>
+        <div class="job-content">
+          <h3>Tata Communications</h3>
+          <div class="role">Product Owner</div>
+          <p>Product ownership role within a communications technology environment.</p>
+        </div>
+      </article>
+      <article class="job">
+        <div class="job-date">October 2021 – Present<br>As listed in profile</div>
+        <div class="job-content">
+          <h3>Cerner Corporation</h3>
+          <div class="role">Solutions Designer</div>
+          <p>Worked on the Fusion Project Financial Management application, including:</p>
+          <ul>
+            <li>App Composer and Oracle APEX</li>
+            <li>Budget-Based Project reporting solutions using SQL</li>
+            <li>Automated jobs using Java Quartz</li>
+          </ul>
+        </div>
+      </article>
+      <article class="job">
+        <div class="job-date">October 2019 – October 2021</div>
+        <div class="job-content">
+          <h3>Cerner Corporation</h3>
+          <div class="role">Configuration Analyst</div>
+          <ul>
+            <li>Performed patient-level data validation for HEDIS, ACO, HCC and CSv4 programs.</li>
+            <li>Created test scripts and validation checks, and deployed dashboards.</li>
+            <li>Configured Score Plan and Personnel tools to support client requirements.</li>
+            <li>Collaborated on automation testing and measure reconciliation for healthcare clients.</li>
+          </ul>
+        </div>
+      </article>
+      <article class="job">
+        <div class="job-date">April 2008 – June 2009</div>
+        <div class="job-content">
+          <h3>20North Pvt. Ltd.</h3>
+          <div class="role">PHP Developer</div>
+          <ul>
+            <li>Developed an e-commerce platform bringing Amazon US products to the Indian market.</li>
+            <li>Built XML web services, shipping and duty calculations, and PayPal payment integration.</li>
+          </ul>
+        </div>
+      </article>
+      <article class="job">
+        <div class="job-date">August 2006 – September 2007</div>
+        <div class="job-content">
+          <h3>Online Productivity Solutions Pvt. Ltd.</h3>
+          <div class="role">Senior Solutions Developer</div>
+          <ul>
+            <li>Maintained and enhanced multiple client websites.</li>
+            <li>Migrated a legacy ColdFusion system to PHP.</li>
+            <li>Provided leadership and mentoring to junior developers.</li>
+          </ul>
+        </div>
+      </article>
+      <article class="job">
+        <div class="job-date">May 2005 – August 2006</div>
+        <div class="job-content">
+          <h3>Sancoale Technology</h3>
+          <div class="role">Junior Software Engineer</div>
+          <p>Developed hotel reservation modules, integrated XML APIs and customized JSP-based shopping cart systems.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="education">
+    <div class="section-heading">
+      <div class="eyebrow">EDUCATION</div>
+      <h2 class="section-title">Learning across disciplines.</h2>
+    </div>
+    <div class="education-grid">
+      <article class="education">
+        <h3>Dempo Charities Trust Dhempe College of Arts & Science, Miramar</h3>
+        <p>BSc, Computer Science · 2000–2003</p>
+      </article>
+      <article class="education">
+        <h3>Goa University</h3>
+        <p>Computational Science · 2003</p>
+      </article>
+      <article class="education">
+        <h3>University of Pune</h3>
+        <p>Computer/Information Technology Administration and Management · 2005</p>
+      </article>
+      <article class="education">
+        <h3>University of Pune</h3>
+        <p>Postgraduate Degree, International Business/Trade/Commerce · 2005</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="contact">
+    <div class="contact">
+      <div class="eyebrow">LET'S CONNECT</div>
+      <h2>Have a good idea?<br>Let's talk.</h2>
+      <p>For professional conversations and opportunities, feel free to reach out by email or connect on LinkedIn.</p>
+      <div class="actions">
+        <a class="button primary" href="mailto:swetanaikblr@gmail.com">Email Sweta ↗</a>
+        <a class="button secondary" href="https://www.linkedin.com/in/sweta-naik-ba530a21a" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>© <span id="year">2026</span> Sweta Naik</span>
+  <span>Designed with clarity in mind.</span>
+</footer>
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
