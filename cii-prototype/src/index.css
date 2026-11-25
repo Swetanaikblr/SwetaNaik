@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Design tokens (RGB triplets). Contrast checked against --paper / --card for WCAG AA body text. */
+  --ink: 30 41 59;          /* slate-800 */
+  --muted: 71 85 105;       /* slate-600 */
+  --paper: 247 248 252;
+  --card: 255 255 255;
+  --line: 222 227 236;
+  --brand: 67 56 202;       /* indigo-700 */
+  --brand-soft: 238 236 255;
+  --accent: 15 118 110;     /* teal-700 */
+  --accent-soft: 224 245 241;
+  --parent: 30 64 120;
+  --parent-soft: 232 239 250;
+  --note: 146 64 14;        /* amber-800 */
+  --note-soft: 255 247 230;
+  --ai: 107 33 168;         /* purple-800 */
+  --ai-soft: 247 240 255;
+  --danger: 185 28 28;
+  color-scheme: light;
+}
+
+html, body, #root { min-height: 100%; }
+body {
+  background: rgb(var(--paper));
+  color: rgb(var(--ink));
+  font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+*:focus-visible {
+  outline: 3px solid rgb(var(--brand));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary { @apply btn bg-brand text-white hover:bg-brand/90; }
+  .btn-soft { @apply btn bg-brand-soft text-brand hover:bg-brand-soft/70; }
+  .btn-ghost { @apply btn border border-line bg-card text-ink hover:bg-paper; }
+  .btn-parent { @apply btn bg-parent text-white hover:bg-parent/90; }
+  .card { @apply rounded-2xl border border-line bg-card p-5 shadow-sm; }
+  .chip { @apply inline-flex min-h-[44px] items-center rounded-full border border-line bg-card px-4 text-sm font-semibold text-ink hover:bg-brand-soft; }
+  .label { @apply text-xs font-bold uppercase tracking-wide text-muted; }
+  .input { @apply min-h-[44px] w-full rounded-xl border border-line bg-card px-3 py-2 text-ink placeholder:text-muted/80; }
+}
+
+@keyframes wave { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+.wave-bar { animation: wave 1s ease-in-out infinite; transform-origin: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
