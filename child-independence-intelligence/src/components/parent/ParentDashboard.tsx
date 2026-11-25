@@ -38,7 +38,9 @@ interface ParentDashboardProps {
   parentRemindersCount: number;
   onAddTask: (newTask: Omit<TaskItem, 'id' | 'status' | 'remindersGiven' | 'isCompleted'>) => void;
   onDeleteTask: (id: string) => void;
-  onAddMaterial: (newMat: Omit<LearningMaterial, 'id' | 'createdAt'>) => void;
+  onAddMaterial: (
+    newMat: Omit<LearningMaterial, 'id' | 'createdAt'>
+  ) => Promise<{ ok: true; material: LearningMaterial } | { ok: false; error: string }>;
   onDeleteMaterial: (id: string) => void;
   onToggleApp: (id: string, isAllowed: boolean) => void;
   onUpdateProfile: (updated: Partial<ChildProfile>) => void;

@@ -22,8 +22,55 @@ import {
   Coffee,
   StopCircle,
 } from 'lucide-react';
-import { TaskItem, LearningMaterial, ChildProfile, DailyObservation } from '../../types';
+import { TaskItem, LearningMaterial, ChildProfile, DailyObservation, HelpCitation } from '../../types';
 import { speakText, stopSpeaking, createSpeechRecognizer } from '../../utils/speech';
+
+type HelpMessage = {
+  sender: 'child' | 'ai';
+  text: string;
+  timestamp: string;
+  citations?: HelpCitation[];
+  grounded?: boolean;
+  mode?: 'claude' | 'claude_no_sources' | 'extractive' | 'unavailable';
+};
+
+/** Shows which passages of the child's own material an answer is based on. */
+const AnswerSources: React.FC<{ item: HelpMessage }> = ({ item }) => {
+  const [open, setOpen] = useState(false);
+  const cites = item.citations ?? [];
+  if (!item.grounded || cites.length === 0) {
+    return (
+      <p className="mt-2 text-[10px] font-semibold text-amber-700">
+        Not found in your notes
+      </p>
+    );
+  }
+  const places = Array.from(new Set(cites.map((c) => c.section || c.materialTitle)));
+  return (
+    <div className="mt-2 border-t border-slate-200 pt-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-[10px] font-semibold text-blue-700 hover:underline cursor-pointer"
+        aria-expanded={open}
+      >
+        From your notes: {places.slice(0, 2).join(' · ')}
+        {places.length > 2 ? ` +${places.length - 2}` : ''} {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <ul className="mt-1 space-y-1">
+          {cites.map((c, i) => (
+            <li key={i} className="text-[10px] text-slate-600 bg-white/70 rounded-lg p-1.5">
+              <span className="font-semibold">{c.materialTitle}</span>
+              {c.section ? ` › ${c.section}` : ''}
+              <span className="block italic">“{c.citedText.trim().slice(0, 240)}”</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 interface StudySessionModalProps {
   task: TaskItem;
@@ -67,9 +114,7 @@ export const StudySessionModal: React.FC<StudySessionModalProps> = ({
   // AI Learning Help State
   const [questionInput, setQuestionInput] = useState('');
   const [isHelpLoading, setIsHelpLoading] = useState(false);
-  const [helpHistory, setHelpHistory] = useState<
-    Array<{ sender: 'child' | 'ai'; text: string; timestamp: string }>
-  >([
+  const [helpHistory, setHelpHistory] = useState<HelpMessage[]>([
     {
       sender: 'ai',
       text: `Hey ${childProfile.name}! We have "${selectedMaterial?.chapter || task.title}" open. Whenever you hit a tricky problem, want to read together, or need a hint, I'm right here!`,
@@ -124,11 +169,12 @@ export const StudySessionModal: React.FC<StudySessionModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question,
-          subject: task.category,
-          chapter: selectedMaterial?.chapter || task.title,
-          topic: selectedMaterial?.topic || 'General',
-          materialContext: selectedMaterial?.contentText || '',
+          // Retrieval runs on the server over all of the child's indexed materials for this
+          // subject; the material that's open gets a boost.
+          subjectId: selectedMaterial?.subjectId || task.subjectId,
+          materialId: selectedMaterial?.id,
           childName: childProfile.name,
+          history: helpHistory.slice(1).map(({ sender, text }) => ({ sender, text })),
         }),
       });
 
@@ -137,10 +183,13 @@ export const StudySessionModal: React.FC<StudySessionModalProps> = ({
         data.answer ||
         "Let's break this down from your chapter! What is the very first step you'd take to set this problem up?";
 
-      const aiMsg = {
-        sender: 'ai' as const,
+      const aiMsg: HelpMessage = {
+        sender: 'ai',
         text: aiReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        citations: Array.isArray(data.citations) ? data.citations : [],
+        grounded: Boolean(data.grounded),
+        mode: data.mode,
       };
 
       setHelpHistory((prev) => [...prev, aiMsg]);
@@ -484,6 +533,7 @@ export const StudySessionModal: React.FC<StudySessionModalProps> = ({
                     }`}
                   >
                     <p className="whitespace-pre-line">{item.text}</p>
+                    {item.sender === 'ai' && item.mode && <AnswerSources item={item} />}
                   </div>
                   <span className="text-[9px] text-slate-400 mt-0.5 px-1">{item.timestamp}</span>
                 </div>

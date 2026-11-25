@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HeaderNav } from './components/HeaderNav';
 import { ChildSpace } from './components/child/ChildSpace';
 import { ParentDashboard } from './components/parent/ParentDashboard';
@@ -67,16 +67,40 @@ export default function App() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleAddMaterial = (newMatData: Omit<LearningMaterial, 'id' | 'createdAt'>) => {
-    const newMat: LearningMaterial = {
-      ...newMatData,
-      id: `mat-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    setMaterials((prev) => [newMat, ...prev]);
+  // Materials live on the server, where they are chunked and indexed for the Study helper (RAG).
+  // The sample materials are only shown if the server can't be reached.
+  useEffect(() => {
+    fetch('/api/materials')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d: { materials: LearningMaterial[] }) => setMaterials(d.materials))
+      .catch((err) => console.warn('Could not load materials from server; using samples:', err));
+  }, []);
+
+  const handleAddMaterial = async (
+    newMatData: Omit<LearningMaterial, 'id' | 'createdAt'>
+  ): Promise<{ ok: true; material: LearningMaterial } | { ok: false; error: string }> => {
+    try {
+      const res = await fetch('/api/materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMatData),
+      });
+      const data = await res.json();
+      if (!res.ok) return { ok: false, error: data.error || 'Could not save this material.' };
+      setMaterials((prev) => [data.material, ...prev]);
+      return { ok: true, material: data.material };
+    } catch {
+      return { ok: false, error: 'Could not reach the server.' };
+    }
   };
 
-  const handleDeleteMaterial = (id: string) => {
+  const handleDeleteMaterial = async (id: string) => {
+    try {
+      const res = await fetch(`/api/materials/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 404) return;
+    } catch {
+      return;
+    }
     setMaterials((prev) => prev.filter((m) => m.id !== id));
   };
 

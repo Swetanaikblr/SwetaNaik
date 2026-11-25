@@ -17,8 +17,37 @@ import { LearningMaterial, Subject, MaterialType } from '../../types';
 interface LearningMaterialsTabProps {
   materials: LearningMaterial[];
   subjects: Subject[];
-  onAddMaterial: (newMat: Omit<LearningMaterial, 'id' | 'createdAt'>) => void;
+  onAddMaterial: (
+    newMat: Omit<LearningMaterial, 'id' | 'createdAt'>
+  ) => Promise<{ ok: true; material: LearningMaterial } | { ok: false; error: string }>;
   onDeleteMaterial: (id: string) => void;
+}
+
+const SUBJECT_ALIASES: Record<string, string> = {
+  mathematics: 'math',
+  maths: 'math',
+  math: 'math',
+  science: 'science',
+  english: 'english',
+  'social studies': 'social',
+};
+
+/** Shows whether the server indexed this material for the Study helper. */
+function IngestBadge({ mat }: { mat: LearningMaterial }) {
+  const ing = mat.ingest;
+  if (!ing) return <span className="text-slate-400 text-[11px]">Not indexed (server offline)</span>;
+  if (ing.status === 'indexed') {
+    const label = ing.chunkCount === 1 ? 'passage' : 'passages';
+    return (
+      <span className="text-emerald-700 text-[11px] font-semibold">
+        Searchable by Study helper · {ing.chunkCount} {label}
+      </span>
+    );
+  }
+  if (ing.status === 'not_searchable') {
+    return <span className="text-slate-500 text-[11px]">Link only · not searchable</span>;
+  }
+  return <span className="text-red-600 text-[11px]">Not indexed: {ing.note || 'no readable text'}</span>;
 }
 
 export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
@@ -46,31 +75,37 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
       ? materials
       : materials.filter((m) => m.subjectId === selectedSubjectId);
 
-  const handleSimulatePhotoUpload = async (file: File) => {
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Claude transcribes the uploaded page; the parent reviews the text before it is indexed.
+  const handleFileUpload = async (file: File) => {
+    setExtractError(null);
     const reader = new FileReader();
     reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
-      setPreviewImage(base64);
+      const dataUrl = e.target?.result as string;
+      setPreviewImage(file.type.startsWith('image/') ? dataUrl : null);
       setIsExtractingOcr(true);
-
       try {
-        const res = await fetch('/api/ocr-extract', {
+        const res = await fetch('/api/materials/extract', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageBase64: base64,
-            fallbackTopic: formTopic || 'Extracted Topic',
-          }),
+          body: JSON.stringify({ fileBase64: dataUrl, mimeType: file.type || 'application/octet-stream' }),
         });
         const data = await res.json();
-        if (data.extractedText) {
-          setFormContentText(data.extractedText);
-          if (data.topic && !formTopic) setFormTopic(data.topic);
-          if (data.chapter && !formChapter) setFormChapter(data.chapter);
-          if (data.summary && !formTitle) setFormTitle(data.chapter || data.topic);
+        if (!res.ok) {
+          setExtractError(data.error || "Couldn't read this file. You can paste the text instead.");
+          return;
         }
-      } catch (err) {
-        console.error('OCR Extraction error:', err);
+        setFormContentText(data.text);
+        if (data.topic && !formTopic) setFormTopic(data.topic);
+        if (data.chapter && !formChapter) setFormChapter(data.chapter);
+        if (data.title && !formTitle) setFormTitle(data.title);
+        const subjectId = SUBJECT_ALIASES[String(data.subject || '').toLowerCase()];
+        if (subjectId && subjects.some((s) => s.id === subjectId)) setFormSubjectId(subjectId);
+      } catch {
+        setExtractError("Couldn't reach the server. You can paste the text instead.");
       } finally {
         setIsExtractingOcr(false);
       }
@@ -78,21 +113,31 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() || !formChapter.trim()) return;
+    if (formType !== 'link' && formContentText.trim().length < 20) {
+      setSaveError('Add the text of this material (upload a file or paste it) so the Study helper can search it.');
+      return;
+    }
 
-    onAddMaterial({
+    setIsSaving(true);
+    setSaveError(null);
+    const result = await onAddMaterial({
       subjectId: formSubjectId,
       chapter: formChapter,
       topic: formTopic || 'Key Concepts',
       title: formTitle,
       type: formType,
       url: formUrl || undefined,
-      contentText: formContentText || 'Textbook excerpt digitized for AI reference.',
-      imageUrl: previewImage || undefined,
-      summary: formContentText.slice(0, 100) + '...',
+      contentText: formContentText,
+      summary: formContentText ? formContentText.slice(0, 100) + '...' : undefined,
     });
+    setIsSaving(false);
+    if (!result.ok) {
+      setSaveError(result.error);
+      return;
+    }
 
     // Reset & close
     setShowAddModal(false);
@@ -102,6 +147,7 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
     setFormUrl('');
     setFormContentText('');
     setPreviewImage(null);
+    setExtractError(null);
   };
 
   return (
@@ -219,9 +265,7 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
-                  <span className="text-slate-400 text-[11px]">
-                    Indexed for AI tutor
-                  </span>
+                  <IngestBadge mat={mat} />
                 )}
 
                 <button
@@ -365,18 +409,22 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
                   </label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,.md"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleSimulatePhotoUpload(file);
+                      if (file) handleFileUpload(file);
                     }}
                     className="w-full text-xs file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
                   />
                   {isExtractingOcr && (
                     <div className="flex items-center gap-2 text-xs text-blue-600 mt-2">
                       <Sparkles className="w-3.5 h-3.5 animate-spin" />
-                      <span>Extracting readable text via Gemini OCR...</span>
+                      <span>Reading the page with Claude…</span>
                     </div>
+                  )}
+                  {extractError && <p className="text-xs text-red-600 mt-2">{extractError}</p>}
+                  {previewImage && (
+                    <img src={previewImage} alt="Uploaded page" className="mt-2 max-h-32 rounded-lg border border-slate-200" />
                   )}
                 </div>
               )}
@@ -384,7 +432,7 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
               {/* Content Textarea */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Extracted Text / Key Concepts (Used by AI Guide)
+                  Material text (please check it; the Study helper searches this)
                 </label>
                 <textarea
                   rows={4}
@@ -395,6 +443,7 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
                 />
               </div>
 
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -405,9 +454,10 @@ export const LearningMaterialsTab: React.FC<LearningMaterialsTabProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer shadow-xs"
+                  disabled={isSaving || isExtractingOcr}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold cursor-pointer shadow-xs"
                 >
-                  Save Material
+                  {isSaving ? 'Saving…' : 'Save Material'}
                 </button>
               </div>
             </form>

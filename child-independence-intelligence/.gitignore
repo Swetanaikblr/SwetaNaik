@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Learning materials saved by the server (may contain a child's notes)
+data/

@@ -5,6 +5,9 @@ import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { setupGeminiLiveBridge, GEMINI_LIVE_TOOLS } from './server/services/geminiLiveBridge';
+import { addMaterial, deleteMaterial, listMaterials, loadStore, search as ragSearch, stats as ragStats } from './server/rag/store';
+import { ClaudeUnavailableError, EXTRACTABLE_TYPES, extractText, getClaude, type ExtractableMime } from './server/rag/claude';
+import { tutor } from './server/rag/tutor';
 
 dotenv.config();
 
@@ -620,149 +623,103 @@ Respond strictly in JSON format as specified:`;
   });
 });
 
-// Socratic AI Learning Assistant grounded in uploaded textbook material
-app.post('/api/learning-help', async (req: Request, res: Response) => {
-  const {
-    question = '',
-    subject = 'Mathematics',
-    chapter = 'Linear Equations',
-    topic = 'Algebra',
-    materialContext = '',
-    childName = 'Aarav',
-  } = req.body;
+// ---------------------------------------------------------------------------
+// Learning materials + RAG Study tutor (Claude). See server/rag/README.md.
+// ---------------------------------------------------------------------------
 
-  const systemInstruction = `You are a friendly Socratic Learning Assistant for a 13-year-old student (${childName}).
-Subject: ${subject}
-Chapter/Topic: ${chapter} - ${topic}
-
-CRITICAL LEARNING RULES (Section 14 of Product Spec):
-1. The objective is LEARNING, NOT homework answer generation.
-2. Explain concepts simply, visually, and vividly.
-3. Give hints and break problems down into manageable steps.
-4. Ask ONE useful question to encourage the student to think through the next step.
-5. Encourage the child to attempt the answer themselves.
-6. AVOID simply giving away the final numerical or homework answer directly.
-7. Use the provided textbook material as your primary source.
-8. Keep response concise (2-4 paragraphs maximum, under 150 words). Friendly and encouraging tone.`;
-
-  try {
-    const ai = getGeminiClient();
-    if (ai) {
-      const prompt = `Textbook Reference Material:
-${materialContext}
-
-Student's Question:
-"${question}"
-
-Provide a friendly, Socratic response that helps ${childName} understand the concept or take the next step without handing them the completed homework answer:`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: { systemInstruction },
-      });
-
-      if (response.text) {
-        return res.json({ answer: response.text });
-      }
-    }
-  } catch (err) {
-    console.error('Gemini learning help error:', err);
-  }
-
-  // High quality contextual fallback responses
-  const qLower = question.toLowerCase();
-  let fallbackAnswer = `Let's look at this step-by-step from your ${subject} material!`;
-
-  if (qLower.includes('5') || (qLower.includes('two-thirds') && qLower.includes('35'))) {
-    fallbackAnswer = `Let's work this out from Chapter 4! 
-
-The question says: *"A number added to its two-thirds is equal to 35."*
-1. Let the unknown number be **x**.
-2. Its two-thirds is **(2/3)x**.
-3. Adding them together gives: **x + (2/3)x = 35**.
-
-Here's a hint: Can you write **x** as **(3/3)x** so they have the same denominator? What do you get when you add (3/3)x + (2/3)x? Give it a try!`;
-  } else if (qLower.includes('photosynthesis')) {
-    fallbackAnswer = `Let's break down Photosynthesis from your Science chapter:
-
-Plants are autotrophic, meaning they make their own food! They take:
-🌿 **Carbon Dioxide (CO₂)** from the air through microscopic stomata
-💧 **Water (H₂O)** from the soil through their roots
-☀️ **Sunlight** trapped by the green **chlorophyll** pigment in chloroplasts
-
-And they produce **Glucose** (energy) and release **Oxygen (O₂)**!
-Want to try explaining: What do you think would happen to a plant's photosynthesis on a cloudy, rainy day?`;
-  } else if (qLower.includes('digestive') || qLower.includes('stomach') || qLower.includes('amylase')) {
-    fallbackAnswer = `Great question from your digestive system notes!
-
-Digestion starts right in your mouth:
-1. Teeth chew the food mechanically.
-2. **Salivary Amylase** starts breaking complex starches into simple sugars.
-3. Then food travels down the esophagus into the stomach, where gastric juice (HCl and Pepsin) begins breaking down proteins.
-
-Want to recall: What role does hydrochloric acid play in protecting our stomach?`;
-  } else {
-    fallbackAnswer = `Let's work through this concept together from your ${subject} notes! 
-
-When tackling "${question}", the best first step is to identify what information we already have, and what we need to find. 
-What do you think is the very first step you'd take here?`;
-  }
-
-  return res.json({ answer: fallbackAnswer });
+// List materials with their indexing status.
+app.get('/api/materials', (_req: Request, res: Response) => {
+  res.json({ materials: listMaterials(), stats: ragStats(), aiAvailable: Boolean(getClaude()) });
 });
 
-// Text extraction / OCR for uploaded photos or handwritten notes
-app.post('/api/ocr-extract', async (req: Request, res: Response) => {
-  const { imageBase64, mimeType = 'image/jpeg', fallbackTopic = 'New Topic' } = req.body;
-
-  try {
-    const ai = getGeminiClient();
-    if (ai && imageBase64) {
-      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [
-          {
-            inlineData: {
-              mimeType,
-              data: base64Data,
-            },
-          },
-          {
-            text: `Extract readable text from this textbook page or student note.
-Provide the output as JSON:
-{
-  "subject": "Mathematics or Science or English",
-  "chapter": "Detected Chapter title",
-  "topic": "Detected topic",
-  "extractedText": "Clean full extracted text",
-  "summary": "1-2 sentence key takeaway"
-}`,
-          },
-        ],
-        config: {
-          responseMimeType: 'application/json',
-        },
-      });
-
-      if (response.text) {
-        const parsed = JSON.parse(response.text);
-        return res.json(parsed);
-      }
-    }
-  } catch (err) {
-    console.error('OCR extract error:', err);
+// Add a material from text (typed, pasted, or reviewed after extraction). Chunked and indexed immediately.
+app.post('/api/materials', (req: Request, res: Response) => {
+  const { subjectId, chapter, topic, title, type, url, contentText, summary, imageUrl } = req.body ?? {};
+  if (typeof title !== 'string' || !title.trim() || typeof chapter !== 'string' || !chapter.trim()) {
+    return res.status(400).json({ error: 'title and chapter are required' });
   }
-
-  // Fallback for simulation
-  return res.json({
-    subject: 'Science',
-    chapter: 'Biology — Chapter 6: Life Processes',
-    topic: fallbackTopic,
-    extractedText: 'Extracted text from uploaded page: Key definitions, formulas, and diagrams extracted accurately.',
-    summary: 'Clear study notes digitized and indexed for AI learning assistant.',
+  if (!['link', 'pdf', 'photo', 'notes'].includes(type)) {
+    return res.status(400).json({ error: 'type must be link, pdf, photo or notes' });
+  }
+  if (type !== 'link' && (typeof contentText !== 'string' || contentText.trim().length < 20)) {
+    return res.status(400).json({ error: 'Add the material text (at least a sentence) so the Study helper can search it.' });
+  }
+  const material = addMaterial({
+    subjectId: String(subjectId || 'math'),
+    chapter: chapter.trim(),
+    topic: String(topic || '').trim() || 'Key concepts',
+    title: title.trim(),
+    type,
+    url: typeof url === 'string' && url ? url : undefined,
+    contentText: typeof contentText === 'string' ? contentText : '',
+    summary: typeof summary === 'string' ? summary : undefined,
+    imageUrl: typeof imageUrl === 'string' && imageUrl.startsWith('http') ? imageUrl : undefined,
   });
+  res.status(201).json({ material, stats: ragStats() });
+});
+
+app.delete('/api/materials/:id', (req: Request, res: Response) => {
+  if (!deleteMaterial(req.params.id)) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true, stats: ragStats() });
+});
+
+// Transcribe an uploaded PDF or photo with Claude so the parent can review the text before saving.
+app.post('/api/materials/extract', async (req: Request, res: Response) => {
+  const { fileBase64, mimeType } = req.body ?? {};
+  if (typeof fileBase64 !== 'string' || typeof mimeType !== 'string') {
+    return res.status(400).json({ error: 'fileBase64 and mimeType are required' });
+  }
+  const data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+  if (mimeType === 'text/plain' || mimeType === 'text/markdown') {
+    const text = Buffer.from(data, 'base64').toString('utf8');
+    return res.json({ text, subject: '', chapter: '', topic: '', title: '' });
+  }
+  if (!EXTRACTABLE_TYPES.includes(mimeType as ExtractableMime)) {
+    return res.status(415).json({ error: 'Unsupported file type. Use a PDF, a photo (JPEG, PNG, GIF, WebP) or a text file.' });
+  }
+  try {
+    const result = await extractText(data, mimeType as ExtractableMime);
+    if (!result.text || result.text.trim().length < 20) {
+      return res.status(422).json({ error: "Couldn't find readable text in this file." });
+    }
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof ClaudeUnavailableError ? err.message : 'Text extraction failed.';
+    console.error('[RAG] Extraction failed:', message);
+    res.status(503).json({ error: message });
+  }
+});
+
+// Debug / evaluation: what does retrieval return for a question?
+app.get('/api/rag/search', (req: Request, res: Response) => {
+  const q = String(req.query.q ?? '');
+  const hits = ragSearch(q, {
+    subjectId: req.query.subjectId ? String(req.query.subjectId) : undefined,
+    materialId: req.query.materialId ? String(req.query.materialId) : undefined,
+    k: Number(req.query.k ?? 4),
+  });
+  res.json({ query: q, hits: hits.map(({ text, ...h }) => ({ ...h, preview: text.slice(0, 160) })) });
+});
+
+// Study tutor: retrieve passages from the child's materials, then answer with Claude and cite them.
+app.post('/api/learning-help', async (req: Request, res: Response) => {
+  const { question, childName = 'Aarav', subjectId, materialId, history } = req.body ?? {};
+  if (typeof question !== 'string' || !question.trim()) {
+    return res.status(400).json({ error: 'question is required' });
+  }
+  const turns = Array.isArray(history)
+    ? history
+        .filter((t: any) => t && (t.sender === 'child' || t.sender === 'ai') && typeof t.text === 'string')
+        .map((t: any) => ({ sender: t.sender, text: String(t.text).slice(0, 2000) }))
+    : [];
+  const result = await tutor({
+    question: question.trim().slice(0, 1000),
+    childName: String(childName).slice(0, 40),
+    subjectId: typeof subjectId === 'string' && subjectId ? subjectId : undefined,
+    materialId: typeof materialId === 'string' && materialId ? materialId : undefined,
+    history: turns,
+  });
+  res.json(result);
 });
 
 // Parent daily summary generator
@@ -815,6 +772,7 @@ JSON format:
 
 // Start server with Vite middleware in dev or static files in production
 async function startServer() {
+  loadStore();
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

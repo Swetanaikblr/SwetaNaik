@@ -119,6 +119,23 @@ export interface LearningMaterial {
   summary?: string;
   imageUrl?: string;
   createdAt: string;
+  /** Set by the server when the material is chunked and indexed for the Study helper. */
+  ingest?: {
+    status: 'indexed' | 'not_searchable' | 'failed';
+    chunkCount: number;
+    indexedAt: string;
+    note?: string;
+  };
+}
+
+/** A passage of the child's material that a Study helper answer cites. */
+export interface HelpCitation {
+  chunkId: string;
+  materialId: string;
+  materialTitle: string;
+  chapter: string;
+  section: string;
+  citedText: string;
 }
 
 export type TaskCategory =
