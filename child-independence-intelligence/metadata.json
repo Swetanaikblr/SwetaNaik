@@ -1,0 +1,6 @@
+{
+  "name": "Child Independence Platform",
+  "description": "Mobile-first platform empowering children 10–15 to build daily independence with friendly AI guidance, while giving parents effortless daily snapshots without nagging.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
